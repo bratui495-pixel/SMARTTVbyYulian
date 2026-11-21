@@ -159,30 +159,47 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupPlayer() {
-        try {
-            val exoPlayer = ExoPlayer.Builder(this).build()
-            exoPlayer.addListener(object : Player.Listener {
-                override fun onPlayerError(error: PlaybackException) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Stream indisponibil: ${error.errorCodeName}",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            })
-            player = exoPlayer
-            playerView.player = exoPlayer
-            playerView.resizeMode = aspectModes[aspectModeIndex].first
-            applyVideoQuality()
+    try {
+        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+            .setConnectTimeoutMs(10000)
+            .setReadTimeoutMs(15000)
+            .setAllowCrossProtocolRedirects(true)
 
-            playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
-                topBar.visibility = visibility
-            })
-        } catch (e: Exception) {
-            Toast.makeText(this, "Eroare player: ${e.message}", Toast.LENGTH_LONG).show()
-        }
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this)
+            .setDataSourceFactory(httpDataSourceFactory)
+
+        val exoPlayer = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                runOnUiThread {
+                    val msg = error.message ?: "Eroare necunoscută"
+                    tvCurrentChannel.text = "${tvCurrentChannel.text} [Eroare: ${error.errorCodeName}]"
+                    Toast.makeText(
+                        this@MainActivity,
+                        "${error.errorCodeName}: $msg",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        })
+
+        player = exoPlayer
+        playerView.player = exoPlayer
+        playerView.resizeMode = aspectModes[aspectModeIndex].first
+        applyVideoQuality()
+
+        playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            topBar.visibility = visibility
+        })
+    } catch (e: Exception) {
+        Toast.makeText(this, "Eroare player: ${e.message}", Toast.LENGTH_LONG).show()
+    }
+}
+
     }
 
     private fun applyVideoQuality() {
